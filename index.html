@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Clicker Coin</title>
+  <style>
+    body {
+      background: #0f0f0f;
+      color: #f1c40f;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 30px;
+    }
+    h1 {
+      color: #fff;
+    }
+    input {
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+    }
+    #coin {
+      font-size: 100px;
+      cursor: pointer;
+      transition: transform 0.1s;
+      margin-top: 30px;
+    }
+    #coin:active {
+      transform: scale(0.9);
+    }
+    .btn {
+      background: #f1c40f;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      color: #000;
+    }
+    .btn:active {
+      transform: scale(0.95);
+    }
+    .leaderboard {
+      margin-top: 40px;
+      background: #222;
+      color: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Clicker Coin 🪙</h1>
+  <div>
+    <input id="playerName" placeholder="Zadej své jméno" />
+    <button class="btn" onclick="saveName()">Uložit jméno</button>
+  </div>
+  <h2 id="greeting">Ahoj!</h2>
+
+  <div id="coin">🪙</div>
+  <h2 id="score">Skóre: 0</h2>
+
+  <button class="btn" onclick="buyUpgrade()">Upgrade (+1 klik) - 50</button>
+  <button class="btn" onclick="buyAutoClicker()">AutoClicker - 100</button>
+  <button class="btn" onclick="resetGame()">Resetovat</button>
+
+  <div class="leaderboard">
+    <h3>🧾 Leaderboard</h3>
+    <ul id="leaderboardList"></ul>
+  </div>
+
+  <audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_37f4377f8f.mp3"></audio>
+
+  <script>
+    let score = parseInt(localStorage.getItem('score')) || 0;
+    let clicksPerClick = parseInt(localStorage.getItem('clicksPerClick')) || 1;
+    let autoClickerOn = localStorage.getItem('autoClickerOn') === "true";
+    let playerName = localStorage.getItem('playerName') || "";
+    const scoreDisplay = document.getElementById('score');
+    const coin = document.getElementById('coin');
+    const clickSound = document.getElementById('clickSound');
+    const greeting = document.getElementById('greeting');
+    const nameInput = document.getElementById('playerName');
+
+    if (playerName) {
+      greeting.textContent = "Ahoj, " + playerName + "!";
+      nameInput.value = playerName;
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = "Skóre: " + score;
+      localStorage.setItem('score', score);
+      updateLeaderboard();
+    }
+
+    function saveName() {
+      playerName = nameInput.value || "Hráč";
+      localStorage.setItem('playerName', playerName);
+      greeting.textContent = "Ahoj, " + playerName + "!";
+      updateLeaderboard();
+    }
+
+    function updateLeaderboard() {
+      const lbList = document.getElementById('leaderboardList');
+      const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || "[]");
+
+      const entryIndex = leaderboard.findIndex(e => e.name === playerName);
+      if (entryIndex >= 0) {
+        leaderboard[entryIndex].score = score;
+      } else if (playerName) {
+        leaderboard.push({ name: playerName, score: score });
+      }
+
+      leaderboard.sort((a, b) => b.score - a.score);
+      localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+
+      lbList.innerHTML = "";
+      leaderboard.slice(0, 5).forEach(entry => {
+        const li = document.createElement('li');
+        li.textContent = `${entry.name}: ${entry.score}`;
+        lbList.appendChild(li);
+      });
+    }
+
+    coin.addEventListener('click', () => {
+      score += clicksPerClick;
+      updateScore();
+      clickSound.currentTime = 0;
+      clickSound.play();
+    });
+
+    function buyUpgrade() {
+      if (score >= 50) {
+        score -= 50;
+        clicksPerClick += 1;
+        localStorage.setItem('clicksPerClick', clicksPerClick);
+        updateScore();
+      } else {
+        alert("Nemáš dostatek bodů na upgrade!");
+      }
+    }
+
+    function buyAutoClicker() {
+      if (score >= 100 && !autoClickerOn) {
+        score -= 100;
+        autoClickerOn = true;
+        localStorage.setItem('autoClickerOn', "true");
+        startAutoClicker();
+        updateScore();
+      } else if (autoClickerOn) {
+        alert("AutoClicker už je aktivní!");
+      } else {
+        alert("Nemáš dostatek bodů na AutoClicker!");
+      }
+    }
+
+    function startAutoClicker() {
+      setInterval(() => {
+        if (autoClickerOn) {
+          score += clicksPerClick;
+          updateScore();
+        }
+      }, 1000);
+    }
+
+    function resetGame() {
+      if (confirm("Opravdu chceš resetovat skóre a vše ostatní?")) {
+        score = 0;
+        clicksPerClick = 1;
+        autoClickerOn = false;
+        localStorage.clear();
+        updateScore();
+        greeting.textContent = "Ahoj!";
+        nameInput.value = "";
+      }
+    }
+
+    updateScore();
+    if (autoClickerOn) startAutoClicker();
+    updateLeaderboard();
+  </script>
+</body>
+</html>
