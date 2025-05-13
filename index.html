@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clicker Coin</title>
+  <style>
+    body {
+      background: #0f0f0f;
+      color: #00ff00;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 30px;
+    }
+    h1 {
+      color: #fff;
+      text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+    }
+    input {
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+    }
+    #coin {
+      font-size: 100px;
+      cursor: pointer;
+      transition: transform 0.1s;
+      margin-top: 30px;
+    }
+    #coin:active {
+      transform: scale(0.9);
+    }
+    .btn {
+      background: #00ff00;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      color: #000;
+    }
+    .btn:active {
+      transform: scale(0.95);
+    }
+    .leaderboard {
+      margin-top: 40px;
+      background: #222;
+      color: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #level {
+      font-size: 24px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Clicker Coin 🪙</h1>
+  <div id="loginDiv">
+    <input id="playerName" placeholder="Zadej své jméno" />
+    <button class="btn" onclick="login()">Přihlásit se</button>
+  </div>
+  <h2 id="greeting">Ahoj!</h2>
+
+  <div id="gameDiv" style="display:none;">
+    <div id="coin" class="btn">🪙 Klikni!</div>
+    <h2 id="score">Skóre: 0</h2>
+    <h3 id="level">Level: 1</h3>
+
+    <button class="btn" onclick="buyUpgrade()">Upgrade (+1 klik) - 100</button>
+    <button class="btn" onclick="buyAutoClicker()">AutoClicker - 200</button>
+    <button class="btn" onclick="buyMegaUpgrade()">Mega Upgrade (+10 kliků) - 1,000,000</button>
+    <button class="btn" onclick="resetGame()">Resetovat</button>
+
+    <div class="leaderboard">
+      <h3>🧾 Leaderboard</h3>
+      <ul id="leaderboardList"></ul>
+    </div>
+  </div>
+
+  <audio id="clickSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_37f4377f8f.mp3"></audio>
+
+  <script>
+    // Inicializace proměnných
+    let score = parseInt(localStorage.getItem('score')) || 0;
+    let level = parseInt(localStorage.getItem('level')) || 1;
+    let clicksPerClick = parseInt(localStorage.getItem('clicksPerClick')) || 1;
+    let autoClickerOn = localStorage.getItem('autoClickerOn') === "true";
+    let playerName = localStorage.getItem('playerName') || "";
+    const scoreDisplay = document.getElementById('score');
+    const levelDisplay = document.getElementById('level');
+    const coin = document.getElementById('coin');
+    const clickSound = document.getElementById('clickSound');
+    const greeting = document.getElementById('greeting');
+    const nameInput = document.getElementById('playerName');
+    const gameDiv = document.getElementById('gameDiv');
+    const loginDiv = document.getElementById('loginDiv');
+
+    // Funkce pro přihlášení
+    function login() {
+      playerName = nameInput.value || "Hráč";
+      localStorage.setItem('playerName', playerName);
+      greeting.textContent = "Ahoj, " + playerName + "!";
+      loginDiv.style.display = "none";
+      gameDiv.style.display = "block";
+      updateScore();
+      updateLeaderboard();
+    }
+
+    // Funkce pro aktualizaci skóre
+    function updateScore() {
+      scoreDisplay.textContent = "Skóre: " + score;
+      level = Math.floor(score / 1000) + 1; // Každých 1000 coinů = nový level
+      levelDisplay.textContent = "Level: " + level;
+      localStorage.setItem('score', score);
+      localStorage.setItem('level', level);
+      updateLeaderboard();
+    }
+
+    // Funkce pro aktualizaci leaderboardu
+    function updateLeaderboard() {
+      const lbList = document.getElementById('leaderboardList');
+      const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || "[]");
+
+      const entryIndex = leaderboard.findIndex(e => e.name === playerName);
+      if (entryIndex >= 0) {
+        leaderboard[entryIndex].score = score;
+      } else if (playerName) {
+        leaderboard.push({ name: playerName, score: score });
+      }
+
+      leaderboard.sort((a, b) => b.score - a.score);
+      localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+
+      lbList.innerHTML = "";
+      leaderboard.slice(0, 5).forEach(entry => {
+        const li = document.createElement('li');
+        li.textContent = `${entry.name}: ${entry.score}`;
+        lbList.appendChild(li);
+      });
+    }
+
+    // Funkce pro kliknutí na coin
+    coin.addEventListener('click', () => {
+      score += clicksPerClick;
+      updateScore();
+      clickSound.currentTime = 0;
+      clickSound.play();
+    });
+
+    // Funkce pro nákup upgrade (+1 klik)
+    function buyUpgrade() {
+      if (score >= 100) {
+        score -= 100;
+        clicksPerClick += 1;
+        localStorage.setItem('clicksPerClick', clicksPerClick);
+        updateScore();
+      } else {
+        alert("Nemáš dostatek coinů na upgrade!");
+      }
+    }
+
+    // Funkce pro nákup auto-clicker
+    function buyAutoClicker() {
+      if (score >= 200 && !autoClickerOn) {
+        score -= 200;
+        autoClickerOn = true;
+        localStorage.setItem('autoClickerOn', "true");
+        startAutoClicker();
+        updateScore();
+      } else if (autoClickerOn) {
+        alert("AutoClicker už je aktivní!");
+      } else {
+        alert("Nemáš dostatek coinů na AutoClicker!");
+      }
+    }
+
+    // Funkce pro nákup Mega Upgrade (+10 kliků)
+    function buyMegaUpgrade() {
+      if (score >= 1000000) {
+        score -= 1000000;
+        clicksPerClick += 10;
+        localStorage.setItem('clicksPerClick', clicksPerClick);
+        updateScore();
+      } else {
+        alert("Nemáš dostatek coinů na Mega Upgrade!");
+      }
+    }
+
+    // Funkce pro spuštění auto-clickeru
+    function startAutoClicker() {
+      setInterval(() => {
+        if (autoClickerOn) {
+          score += clicksPerClick;
+          updateScore();
+        }
+      }, 1000);
+    }
+
+    // Funkce pro reset hry
+    function resetGame() {
+      if (confirm("Opravdu chceš resetovat skóre a vše ostatní?")) {
+        score = 0;
+        level = 1;
+        clicksPerClick = 1;
+        autoClickerOn = false;
+        localStorage.clear();
+        updateScore();
+        greeting.textContent = "Ahoj!";
+        nameInput.value = "";
+        loginDiv.style.display = "block";
+        gameDiv.style.display = "none";
+      }
+    }
+
+    // Inicializace
+    updateScore();
+    if (autoClickerOn) startAutoClicker();
+    updateLeaderboard();
+  </script>
+</body>
+</html>
